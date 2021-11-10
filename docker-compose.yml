@@ -1,21 +1,60 @@
 version: '3'
 
+
+networks:
+  mynet:
+    ipam:
+      config:
+        - subnet: 10.100.0.0/24
+
 services:
-  server:
+  server-dhaka:
     build: ./server
     volumes:
       - ./server:/app
-    ports:
-      - 8000:8000
+#    ports:
+#      - 8000:8000
     depends_on:
-      - communication
+      - communication-dhaka
+    environment:
+      - REGION=dhaka
+    networks:
+      mynet:
+        ipv4_address: 10.100.0.30
 
-  communication:
+  server-dinajpur:
+    build: ./server
+    volumes:
+      - ./server:/app
+#    ports:
+#      - 8000:8000
+    depends_on:
+      - communication-dinajpur
+    environment:
+      - REGION=dinajpur
+    networks:
+      mynet:
+        ipv4_address: 10.100.0.70
+
+  communication-dhaka:
     build: ./communication
     volumes:
       - ./communication:/app
-    ports:
-      - 5500:5500
+#    ports:
+#      - 5500:5500
+    networks:
+      mynet:
+        ipv4_address: 10.100.0.50
+
+  communication-dinajpur:
+    build: ./communication
+    volumes:
+      - ./communication:/app
+#    ports:
+#      - 5500:5500
+    networks:
+      mynet:
+        ipv4_address: 10.100.0.55
 
   database:
     image: mongo
@@ -23,23 +62,45 @@ services:
       - mongodb_rating_data:/data/db
     ports:
       - 17017-17019:27017-27019
+    networks:
+      mynet:
+        ipv4_address: 10.100.0.60
 
   rating:
     build: ./rating
-#    volumes:
-#      - ./rating:/app
     ports:
       - 5000:5000
     depends_on:
       - database
+    networks:
+      mynet:
+        ipv4_address: 10.100.0.40
 
-  nginx:
+  nginx-dhaka:
     build: ./nginx/
-    ports:
-      - 7000:7000
     depends_on:
-      - server
+      - server-dhaka
       - rating
+    environment:
+      - API=server-dhaka
+    command: /bin/sh -c "envsubst < /etc/nginx/conf.d/nginx.conf.template > /etc/nginx/conf.d/nginx.conf && nginx -g 'daemon off;'"
+    networks:
+      mynet:
+        ipv4_address: 10.100.0.2
+
+  nginx-dinajpur:
+    build: ./nginx/
+#    ports:
+#      - 7001:7000
+    depends_on:
+      - server-dinajpur
+      - rating
+    environment:
+      - API=server-dinajpur
+    command: /bin/sh -c "envsubst < /etc/nginx/conf.d/nginx.conf.template > /etc/nginx/conf.d/nginx.conf && nginx -g 'daemon off;'"
+    networks:
+      mynet:
+        ipv4_address: 10.100.0.20
 
 volumes:
   mongodb_rating_data:

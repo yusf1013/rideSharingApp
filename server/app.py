@@ -5,15 +5,17 @@ import requests
 from flask import Flask, request
 from flask_apscheduler import APScheduler
 from flask_socketio import SocketIO
-import atexit
 from apscheduler.schedulers.background import BackgroundScheduler
 from pytz import utc
+import os
 
 eventlet.monkey_patch()
 app = Flask(__name__)
 scheduler = APScheduler()
 app.config['SECRET_KEY'] = 'secret!'
 socketio = SocketIO(app)
+region = os.environ.get('REGION')
+# region = "wololo"
 
 drivers = []
 riders = []
@@ -80,7 +82,9 @@ def find_a_driver():
         data, distance = rider_services(riders[0])
         js = {"0": riders[0]['name'], "1": data['name'], "2": round(distance * 2)}
         print("Trying request")
-        requests.post("http://communication:5500/", json=js)
+        print("http://" + region + ".communication.com:5500/")
+        requests.post("http://" + region + ".communication.com:5500/", json=js)
+        # requests.post("http://dinajpur.communication.com:5500/", json=js)
         # requests.post("http://127.0.0.1:5500/", json=js)
         # socketio.emit('message', [riders[0]['name'], data['name'], round(distance * 2)], namespace='/communication')
         riders.pop(0)
