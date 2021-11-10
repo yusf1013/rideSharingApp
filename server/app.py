@@ -1,15 +1,16 @@
 import time
-from flask_socketio import SocketIO
-from flask import Flask, request
-from threading import Timer
-from flask_apscheduler import APScheduler
+
 import eventlet
-import database
-
+import requests
+from flask import Flask, request
+from flask_apscheduler import APScheduler
+from flask_socketio import SocketIO
 import atexit
+from apscheduler.schedulers.background import BackgroundScheduler
+from pytz import utc
 
-app = Flask(__name__)
 eventlet.monkey_patch()
+app = Flask(__name__)
 scheduler = APScheduler()
 app.config['SECRET_KEY'] = 'secret!'
 socketio = SocketIO(app)
@@ -37,7 +38,6 @@ def find_best_driver(rider):
     return selected_driver, selected_dist
 
 
-@socketio.on('message')
 def rider_services(data):
     selected_driver, distance = find_best_driver(data)
     return selected_driver, distance
@@ -57,51 +57,32 @@ def rider():
     return data
 
 
-@app.route('/rating', methods=['POST'])
-def rating():
-    data = request.json
-
-    handle_rating(data)
-    # try:
-    #     handle_rating(data)
-    # except:
-    #     print("Error!", data)
-
-    return "Done!"
-
-
-def handle_rating(data):
-    print("Rating:", data)
-    to_find = {'driver': data['driver']}
-    db_driver = database.find_from_database("ride_sharing_app", "ratings", to_find)
-    if db_driver is None:
-        print("In if: ", data)
-        database.insert_into_database("ride_sharing_app", "ratings", data)
-
-    else:
-        print("In else: ", data)
-        print(type(db_driver['number']))
-        n = db_driver['number'] + 1
-        rate = (db_driver['number'] * db_driver['rating'] + data['rating']) / n
-        data['number'] = n
-        data['rating'] = rate
-        print("End else: ", data)
-        database.update_database("ride_sharing_app", "ratings", to_find, data)
-    return data
+@app.route('/try', methods=['GET'])
+def baka():
+    return "Sussy Baka\n"
 
 
 @app.route('/')
 def index():
     print("Received request!!!!!!!!!!")
-    socketio.emit('message', ["HI", "Bye"], namespace='/communication')
     return 'Hellodd!'
+
+
+@app.route('/d')
+def index2():
+    print("Received request!!!!!!!!!!")
+    return 'DIE DIE DIE!'
 
 
 def find_a_driver():
     print(time.strftime("%A, %d. %B %Y %I:%M:%S %p"))
     if len(drivers) > 0 and len(riders) > 0:
         data, distance = rider_services(riders[0])
-        socketio.emit('message', [riders[0]['name'], data['name'], round(distance * 2)], namespace='/communication')
+        js = {"0": riders[0]['name'], "1": data['name'], "2": round(distance * 2)}
+        print("Trying request")
+        requests.post("http://communication:5500/", json=js)
+        # requests.post("http://127.0.0.1:5500/", json=js)
+        # socketio.emit('message', [riders[0]['name'], data['name'], round(distance * 2)], namespace='/communication')
         riders.pop(0)
 
     # elif len(riders) > 1:
@@ -109,6 +90,12 @@ def find_a_driver():
 
 
 if __name__ == '__main__':
-    scheduler.add_job(id='Schedule task', func=find_a_driver, trigger='interval', seconds=5)
+    # scheduler.add_job(id='Schedule task', func=find_a_driver, trigger='interval', seconds=5)
+    # scheduler.start()
+    # # app.run(port=8000)
+    # socketio.run(app, port=8000)
+
+    scheduler = BackgroundScheduler(timezone=utc)
+    scheduler.add_job(func=find_a_driver, trigger="interval", seconds=5)
     scheduler.start()
-    socketio.run(app, port=8000)
+    socketio.run(app, port=8000, host="0.0.0.0")

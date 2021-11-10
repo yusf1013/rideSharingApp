@@ -1,3 +1,5 @@
+import json
+
 from flask import Flask, request
 import database
 
@@ -6,9 +8,10 @@ app = Flask(__name__)
 
 @app.route('/rating', methods=['POST'])
 def rating():
+    print("YOYOYO in")
     data = request.json
-    handle_rating(data)
-    return "Done!"
+    r = handle_rating(data)
+    return r
 
 
 def handle_rating(data):
@@ -28,7 +31,21 @@ def handle_rating(data):
         data['rating'] = rate
         print("End else: ", data)
         database.update_database("ride_sharing_app", "ratings", to_find, data)
-    return data
+
+    print(db_driver)
+    if data and '_id' in data.keys():
+        del data['_id']
+
+    if db_driver and '_id' in db_driver.keys():
+        del db_driver['_id']
+
+    dic = '{ "Old data": ' + json.dumps(db_driver) + ', "New data": ' + json.dumps(data) + ' }'
+    response = app.response_class(
+        response=dic,
+        status=200,
+        mimetype='application/json'
+    )
+    return response
 
 
 @app.route('/')
@@ -38,4 +55,4 @@ def index():
 
 
 if __name__ == '__main__':
-    app.run(port=5000)
+    app.run(host='0.0.0.0', port=5000)

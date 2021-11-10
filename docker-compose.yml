@@ -1,0 +1,45 @@
+version: '3'
+
+services:
+  server:
+    build: ./server
+    volumes:
+      - ./server:/app
+    ports:
+      - 8000:8000
+    depends_on:
+      - communication
+
+  communication:
+    build: ./communication
+    volumes:
+      - ./communication:/app
+    ports:
+      - 5500:5500
+
+  database:
+    image: mongo
+    volumes:
+      - mongodb_rating_data:/data/db
+    ports:
+      - 17017-17019:27017-27019
+
+  rating:
+    build: ./rating
+#    volumes:
+#      - ./rating:/app
+    ports:
+      - 5000:5000
+    depends_on:
+      - database
+
+  nginx:
+    build: ./nginx/
+    ports:
+      - 7000:7000
+    depends_on:
+      - server
+      - rating
+
+volumes:
+  mongodb_rating_data:
